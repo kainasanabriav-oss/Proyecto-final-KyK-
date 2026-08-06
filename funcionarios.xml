@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<funcionarios><funcionario id="CAR-001"><usuario>Dr Ceciliano</usuario><nombre_completo>Kevin Ceciliano Rodriguez</nombre_completo><estado>True</estado></funcionario><funcionario id="ID-002"><usuario>Dr Simi</usuario><nombre_completo>David Gomez Perez</nombre_completo><estado>True</estado></funcionario></funcionarios>
