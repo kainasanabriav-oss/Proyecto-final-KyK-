@@ -91,5 +91,5 @@ class MenorEdad:
 
         if(fecha_actual.month,fecha_actual.day)<(self.__Fecha_Nacimiento.month, self.__Fecha_Nacimiento.day): #si la fecha de nacimiento en meses y dias es mayor, o sea
             edad-=1 #si estamos antes del cumpleanhos en dicho anho, tiene -1 de edad, no los ha cumplido
-        return edad
+        return edad #Kaina come caca
     
