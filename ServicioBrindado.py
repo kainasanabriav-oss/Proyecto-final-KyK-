@@ -29,7 +29,6 @@ class ServicioBrindado:
             self.__ID_cita = ServicioBrindado.consecutivo #entonces, ID cita depende de consecutivo
 
 #============================================================= Getters n Setters =========================================================
-
     @property
     def ID_cita (self):
         return self.__ID_cita
