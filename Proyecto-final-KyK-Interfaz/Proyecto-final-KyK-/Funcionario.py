@@ -1,17 +1,13 @@
-import xml.etree.ElementTree as ET
-
 
 class Funcionario:
-    """Modelo de funcionario. La interfaz se encarga de pedir los datos."""
-    funcionarios = []
     usuario_Actual = None
 
-    def __init__(self, ID_funcionario, Usuario, Nombre_Completo, Estado=True, Contrasena="1234"):
+    def __init__(self, ID_funcionario, Usuario, Nombre_Completo, Contrasena, Estado=True): #ahora las clases solamente van a tener constructores+setter,getter, sin metodos de clase
         self.ID_funcionario = ID_funcionario
         self.Usuario = Usuario
         self.Nombre_Completo = Nombre_Completo
-        self.Estado = Estado
         self.Contrasena = Contrasena
+        self.Estado = Estado
 
     @property
     def ID_funcionario(self):
@@ -54,32 +50,12 @@ class Funcionario:
     def Estado(self, valor):
         self.__Estado = bool(valor)
 
-    @classmethod
-    def buscar_por_usuario(cls, usuario):
-        usuario = usuario.strip().lower()
-        return next((f for f in cls.funcionarios if f.Usuario.lower() == usuario), None)
+    @property
+    def Contrasena(self):
+        return self.__Contrasena
 
-    @classmethod
-    def cargar_Funcionarios_xml(cls, ruta):
-        cls.funcionarios.clear()
-        try:
-            raiz = ET.parse(ruta).getroot()
-            for nodo in raiz.findall("funcionario"):
-                usuario = (nodo.findtext("usuario") or "").strip()
-                nombre = (nodo.findtext("nombre_completo") or "").strip()
-                estado = (nodo.findtext("estado") or "True") == "True"
-                contrasena = nodo.findtext("contrasena") or "1234"
-                cls.funcionarios.append(cls(nodo.get("id", ""), usuario, nombre, estado, contrasena))
-        except (FileNotFoundError, ET.ParseError):
-            pass
-
-    @classmethod
-    def guardar_Funcionarios_xml(cls, ruta):
-        raiz = ET.Element("funcionarios")
-        for fun in cls.funcionarios:
-            nodo = ET.SubElement(raiz, "funcionario", id=str(fun.ID_funcionario))
-            ET.SubElement(nodo, "usuario").text = fun.Usuario
-            ET.SubElement(nodo, "nombre_completo").text = fun.Nombre_Completo
-            ET.SubElement(nodo, "estado").text = str(fun.Estado)
-            ET.SubElement(nodo, "contrasena").text = fun.Contrasena
-        ET.ElementTree(raiz).write(ruta, encoding="utf-8", xml_declaration=True)
+    @Contrasena.setter
+    def Contrasena (self,valor):
+        if not valor:
+            raise ValueError("La contraseña no puede estar vacía.")
+        self.__Contrasena= valor

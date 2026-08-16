@@ -2,13 +2,13 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from Funcionario import Funcionario
 from .Estilos import preparar_ventana, configurar_estilos, barra_superior, COLOR_FONDO, COLOR_BLANCO, COLOR_AZUL, COLOR_MENTA, COLOR_BORDE, COLOR_GRIS, COLOR_TEXTO, COLOR_AZUL_CLARO, COLOR_CIAN
-
+import odbc_conexion
 
 class InterfazLogin:
     def __init__(self, root, al_ingresar):
         self.root = root
         self.al_ingresar = al_ingresar
-        configurar_estilos()
+        configurar_estilos() #los estilos son el modo oscuro y el modo claro
         preparar_ventana(root, "Inicio de sesión", 560, 660)
         root.resizable(False, False)
         self.crear_interfaz()
@@ -74,24 +74,19 @@ class InterfazLogin:
         self.root.bind("<Return>", lambda _e: self.validar())
 
     def alternar_clave(self):
-        self.txt_contrasena.config(show="" if self.mostrar_clave.get() else "*")
+        self.txt_contrasena.config(show="" if self.mostrar_clave.get() else "*") #no mostrar la contrasenha o no
 
-    def validar(self):
-        usuario = self.txt_usuario.get().strip()
+    def validar(self): #esta es la logica usada dentro del menu conectado con SQL. agarra los datos dentro de sql y los valida
+        usuario = self.txt_usuario.get().strip() #lo que agarramos de la interfaz grafica, se lo damos a usuario o contrasena
         contrasena = self.txt_contrasena.get().strip()
-        if not usuario or not contrasena:
+        if not usuario or not contrasena: #validacion de si faltan valores por poner
             messagebox.showwarning("Datos faltantes", "Digite el usuario y la contraseña.")
             return
-        funcionario = Funcionario.buscar_por_usuario(usuario)
-        if funcionario is None:
-            messagebox.showerror("Acceso denegado", "El usuario no existe.")
+        try:
+            conn, id_funcionario, nombre_completo = odbc_conexion.login(usuario, contrasena) #agarrar los otros datos del funcionario, si concuerdan
+        except ValueError as e:
+            messagebox.showerror("Acceso denegado", str(e)) #e de error
             return
-        if not funcionario.Estado:
-            messagebox.showerror("Acceso denegado", "El funcionario está inactivo.")
-            return
-        if funcionario.Contrasena != contrasena:
-            messagebox.showerror("Acceso denegado", "La contraseña es incorrecta.")
-            return
-        Funcionario.usuario_Actual = funcionario
+        Funcionario.usuario_Actual = Funcionario(id_funcionario, usuario, nombre_completo, contrasena, True) #le damos los valores de funcionario actual
         self.root.unbind("<Return>")
-        self.al_ingresar(funcionario)
+        self.al_ingresar(conn, Funcionario.usuario_Actual)

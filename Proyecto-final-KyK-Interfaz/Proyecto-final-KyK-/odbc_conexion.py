@@ -18,7 +18,8 @@ class conexionBD:
 
 def login(usuario: str, contrasena: str): #usado para el log in del inicio, comprueba las credenciales
     """
-
+    Si todo es correcto, retorna (conn, id_funcionario, nombre_completo).
+    Si algo falla, lanza ValueError con el mensaje correspondiente.
     """
     bd = conexionBD() #declaramos la clase conexion BD
     conn = bd.obtener_conexion() #llamamos a bd y de esta manera llamar a obtener conexion
@@ -28,11 +29,11 @@ def login(usuario: str, contrasena: str): #usado para el log in del inicio, comp
         """
         SELECT f.id_funcionario, f. usuario, f.nombre_completo,f.estado,f.contrasena
         FROM Funcionario f
-        WHERE f.usuario = ?;
+        WHERE f.usuario = ?; #equivalente de sql
         """,
-        usuario,
+        usuario, #usuario tambien lo pasamos
     )
-    row = cursor.fetchone()
+    row = cursor.fetchone() #fetchone trae una sola fila del resultado como tupla
 
     if row is None: #si el usuario no es valido o no lo encuentra
         conn.close()
@@ -40,16 +41,16 @@ def login(usuario: str, contrasena: str): #usado para el log in del inicio, comp
 
     id_funcionario, usuario,nombre_completo, estado,contrasena_guardada = row
 
-    if estado == 0: #usuario inactivo segun la tabla
+    if not estado: #usuario inactivo segun la tabla
         conn.close()
         raise ValueError("Usuario inactivo")
 
-    if contrasena_guardada != contrasena: #clave
+    if str(contrasena_guardada) != str(contrasena): #clave
         conn.close()
-        raise ValueError("Clave incorrecta")
+        raise ValueError("Contraseña incorrecta")
 
     cursor.execute( #
-        "EXEC sp_set_session_context @key=N'ID_USUARIO', @value=?",
+        "EXEC sp_set_session_context @key=N'id_funcionario', @value=?",
         id_funcionario,
     )
     conn.commit()
@@ -57,23 +58,23 @@ def login(usuario: str, contrasena: str): #usado para el log in del inicio, comp
     return conn, id_funcionario, f"{nombre_completo}" #usuario actual
 
 # ------------------------------------------------------------------
-# CRUD - FUNCIONARIO
+# FUNCIONARIO a SQL, cruds
 # ------------------------------------------------------------------
 COLUMNAS_FUNCIONARIO = [
     "id_funcionario", "usuario", "nombre_completo", "estado", "contrasena",
 ]
 
-def listar_funcionarios(conn: pyodbc.Connection, filtro: str = ""):
+def listar_funcionarios(conn: pyodbc.Connection, filtro: str = ""): #conn: pyodbc.Connection, se espera que sea un objeto de conexión de pyodbc. 
     cursor = conn.cursor()
     if filtro:
-        like = f"%{filtro}%"
+        like = f"%{filtro}%" #LIKE usa %, significa cualquier cantidad de caracteres incluyendo cero, plantilla que va a hacer que sql busque cualquier fila contenga el filtro
         cursor.execute(
             f"""
             SELECT {', '.join(COLUMNAS_FUNCIONARIO)}
             FROM Funcionario
             WHERE id_funcionario LIKE ? OR usuario LIKE ? OR nombre_completo LIKE ?
             ORDER BY id_funcionario
-            """,
+            """, #querys de sql
             (like, like, like),
         )
     else:
@@ -93,7 +94,7 @@ def obtener_funcionario_por_usuario(conn: pyodbc.Connection, usuario: str):
     return cursor.fetchone()
 
 
-def crear_funcionario(conn: pyodbc.Connection, data: dict) -> None:
+def crear_funcionario(conn: pyodbc.Connection, data: dict) -> None: #data: dict → data se espera que sea un diccionario., -> None → indica que la función no retorna nada
     cursor = conn.cursor()
     cursor.execute(
         """

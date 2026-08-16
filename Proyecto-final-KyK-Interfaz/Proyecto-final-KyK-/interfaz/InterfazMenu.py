@@ -10,10 +10,10 @@ from .InterfazConsultaFacturas import InterfazConsultaFacturas
 
 
 class InterfazMenu:
-    def __init__(self, root, funcionario, guardar_cambios, cerrar_sesion):
+    def __init__(self, root,conn, funcionario, guardar_cambios, cerrar_sesion):
         self.root = root
+        self.conn = conn
         self.funcionario = funcionario
-        self.guardar_cambios = guardar_cambios
         self.cerrar_sesion = cerrar_sesion
         configurar_estilos()
         preparar_ventana(root, "Menú principal", 1020, 640)
@@ -110,7 +110,7 @@ class InterfazMenu:
             ("🦷  Servicios", lambda: InterfazServicios(self.root, self.guardar_cambios), False),
             ("📝  Atenciones", lambda: InterfazFacturacion(self.root, self.funcionario, self.guardar_cambios), False),
             ("💳  Facturación", lambda: InterfazConsultaFacturas(self.root, self.guardar_cambios), False),
-            ("👤  Funcionarios", lambda: InterfazFuncionarios(self.root, self.guardar_cambios), False),
+            ("👤  Funcionarios", lambda: InterfazFuncionarios(self.root, self.conn), False), #de guardar cambio a conn, de sql
         ]
         for texto, comando, activo in opciones:
             self._btn_sidebar(nav, texto, comando, activo)
