@@ -14,6 +14,7 @@ class InterfazMenu:
         self.root = root
         self.conn = conn
         self.funcionario = funcionario
+        self.guardar_cambios = guardar_cambios
         self.cerrar_sesion = cerrar_sesion
         configurar_estilos()
         preparar_ventana(root, "Menú principal", 1020, 640)
@@ -134,7 +135,7 @@ class InterfazMenu:
             ("🦷", "Servicios", "Administrar los servicios dentales disponibles.", "#F472B6", lambda: InterfazServicios(self.root, self.guardar_cambios)),
             ("📝", "Atenciones", "Crear nuevas atenciones y facturas.", "#FBBF24", lambda: InterfazFacturacion(self.root, self.funcionario, self.guardar_cambios)),
             ("💳", "Facturación", "Consultar facturas y registrar pagos.", "#22D3EE", lambda: InterfazConsultaFacturas(self.root, self.guardar_cambios)),
-            ("👤", "Funcionarios", "Gestionar usuarios y personal de la clínica.", "#A78BFA", lambda: InterfazFuncionarios(self.root, self.guardar_cambios)),
+            ("👤", "Funcionarios", "Gestionar usuarios y personal de la clínica.", "#A78BFA", lambda: InterfazFuncionarios(self.root, self.conn)),
         ]
         for i, data in enumerate(accesos):
             card = self._tarjeta_acceso(accesos_wrap, *data)
