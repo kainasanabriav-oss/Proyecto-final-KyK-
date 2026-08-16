@@ -12,6 +12,7 @@ class conexionBD:
             f"DRIVER={self.driver};"
             f"SERVER={self.servidor};"
             f"DATABASE={self.base_datos};"
+            f"Trusted_Connection=yes;"
             f"TrustServerCertificate={self.trust};"
         )
         return pyodbc.connect(cadena)
@@ -29,9 +30,9 @@ def login(usuario: str, contrasena: str): #usado para el log in del inicio, comp
         """
         SELECT f.id_funcionario, f. usuario, f.nombre_completo,f.estado,f.contrasena
         FROM Funcionario f
-        WHERE f.usuario = ?; #equivalente de sql
+        WHERE f.usuario = ?;
         """,
-        usuario, #usuario tambien lo pasamos
+        usuario, #usuario tambien lo pasamos,equivalente de sql
     )
     row = cursor.fetchone() #fetchone trae una sola fila del resultado como tupla
 

@@ -18,6 +18,10 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 def ruta(nombre):
     return os.path.join(BASE, nombre)
 
+def guardar_datos_temporales():
+    Encargado.guardar_Encargados_xml(ruta("encargados.xml"))
+    ServiciosDisponibles.guardar_Servicios_xml(ruta("servicios.xml"))
+    ServicioBrindado.guardar_Facturas_xml(ruta("facturas.xml"))
 
 def cargar_datos_temporales():
     Encargado.cargar_Encargados_xml(ruta("encargados.xml"))
@@ -26,7 +30,7 @@ def cargar_datos_temporales():
 
 
 def iniciar_menu(conn, funcionario):
-    InterfazMenu(raiz, conn, funcionario, mostrar_login)
+    InterfazMenu(raiz, conn, funcionario, guardar_datos_temporales,mostrar_login)
 
 
 def mostrar_login():
