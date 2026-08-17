@@ -10,11 +10,10 @@ from .InterfazConsultaFacturas import InterfazConsultaFacturas
 
 
 class InterfazMenu:
-    def __init__(self, root,conn, funcionario, guardar_cambios, cerrar_sesion):
+    def __init__(self, root,conn, funcionario, cerrar_sesion):
         self.root = root
         self.conn = conn
         self.funcionario = funcionario
-        self.guardar_cambios = guardar_cambios
         self.cerrar_sesion = cerrar_sesion
         configurar_estilos()
         preparar_ventana(root, "Menú principal", 1020, 640)
@@ -109,8 +108,8 @@ class InterfazMenu:
             ("👨‍👩‍👧  Padres", lambda: InterfazPadres(self.root, self.conn), False),
             ("🧒  Niños", lambda: InterfazNinos(self.root, self.conn), False),
             ("🦷  Servicios", lambda: InterfazServicios(self.root, self.conn), False),
-            ("📝  Atenciones", lambda: InterfazFacturacion(self.root, self.funcionario, self.guardar_cambios), False),
-            ("💳  Facturación", lambda: InterfazConsultaFacturas(self.root, self.guardar_cambios), False),
+            ("📝  Atenciones", lambda: InterfazFacturacion(self.root, self.funcionario, self.conn), False),
+            ("💳  Facturación", lambda: InterfazConsultaFacturas(self.root, self.conn), False),
             ("👤  Funcionarios", lambda: InterfazFuncionarios(self.root, self.conn), False), #de guardar cambio a conn, de sql
         ]
         for texto, comando, activo in opciones:
@@ -133,8 +132,8 @@ class InterfazMenu:
             ("👨‍👩‍👧", "Padres", "Registrar, buscar y editar padres o encargados.", "#60A5FA", lambda: InterfazPadres(self.root, self.conn)),
             ("🧒", "Niños", "Registrar niños y visualizar su edad calculada.", "#34D399", lambda: InterfazNinos(self.root, self.conn)),
             ("🦷", "Servicios", "Administrar los servicios dentales disponibles.", "#F472B6", lambda: InterfazServicios(self.root, self.conn)),
-            ("📝", "Atenciones", "Crear nuevas atenciones y facturas.", "#FBBF24", lambda: InterfazFacturacion(self.root, self.funcionario, self.guardar_cambios)),
-            ("💳", "Facturación", "Consultar facturas y registrar pagos.", "#22D3EE", lambda: InterfazConsultaFacturas(self.root, self.guardar_cambios)),
+            ("📝", "Atenciones", "Crear nuevas atenciones y facturas.", "#FBBF24", lambda: InterfazFacturacion(self.root, self.funcionario, self.conn)),
+            ("💳", "Facturación", "Consultar facturas y registrar pagos.", "#22D3EE", lambda: InterfazConsultaFacturas(self.root, self.conn)),
             ("👤", "Funcionarios", "Gestionar usuarios y personal de la clínica.", "#A78BFA", lambda: InterfazFuncionarios(self.root, self.conn)),
         ]
         for i, data in enumerate(accesos):
@@ -150,5 +149,4 @@ class InterfazMenu:
 
     def confirmar_salida(self):
         if messagebox.askyesno("Cerrar sesión", "¿Desea cerrar la sesión actual?"):
-            self.guardar_cambios()
             self.cerrar_sesion()

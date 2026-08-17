@@ -1,11 +1,16 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-from ServicioBrindado import ServicioBrindado
+import odbc_conexion as conexion
+from MenorEdad import MenorEdad
+
 from .Estilos import preparar_ventana, configurar_estilos, barra_superior, COLOR_FONDO, COLOR_BLANCO, COLOR_AZUL, COLOR_MENTA, COLOR_BORDE, COLOR_GRIS
 
 class InterfazConsultaFacturas:
-    def __init__(self,master,guardar_cambios):
-        self.guardar_cambios=guardar_cambios; self.ventana=tk.Toplevel(master); configurar_estilos(); preparar_ventana(self.ventana,"Consulta de Facturas",1020,640); self.factura=None; self.crear_interfaz(); self.cargar_tabla()
+    def __init__(self, master, conn):
+        self.conn = conn
+        self.ventana = tk.Toplevel(master); configurar_estilos(); preparar_ventana(self.ventana, "Consulta de Facturas", 1020, 640)
+        self.factura = None
+        self.crear_interfaz(); self.cargar_tabla()
 
     def crear_interfaz(self):
         barra_superior(self.ventana)
@@ -30,31 +35,46 @@ class InterfazConsultaFacturas:
         ttk.Button(pie,text="Registrar Pago",command=self.pagar,style="Menta.TButton").pack(side="right")
         ttk.Button(pie,text="Cerrar",command=self.ventana.destroy).pack(side="right",padx=8)
 
-    def todos(self): self.txt_buscar.delete(0,"end"); self.cargar_tabla()
+    def todos(self): self.txt_buscar.delete(0, "end"); self.cargar_tabla()
+
 
     def cargar_tabla(self):
         for x in self.tabla.get_children(): self.tabla.delete(x)
-        q=self.txt_buscar.get().strip().lower()
+        q = self.txt_buscar.get().strip()
+        for id_cita, fecha_cita, cancelado, id_menor, nombre, ap1, ap2, fecha_nac, sexo in conexion.listar_citas(self.conn, q):
+            menor = MenorEdad(nombre, ap1, ap2, sexo, fecha_nac)
+            servicios = conexion.obtener_servicios_de_cita(self.conn, id_cita)
+            _, _, total = conexion.calcular_totales(servicios)
+            self.tabla.insert("", "end", iid=str(id_cita), values=(
+                id_cita, fecha_cita, menor.nombre_completo, menor.calculo_Edad_Menor(),
+                f"₡{total:,.2f}", "Cancelado" if cancelado else "Pendiente",
+            ))
 
-        for f in ServicioBrindado.facturas:
-            if q and q not in str(f.ID_cita).lower() and q not in f.Menor.nombre_completo.lower() and q not in str(f.Menor.ID_menorEdad).lower(): continue
-            self.tabla.insert("","end",values=(f.ID_cita,f.Fecha_Cita,f.Menor.nombre_completo,f.Menor.calculo_Edad_Menor(),f"₡{f.calcular_Total():,.2f}","Cancelado" if f.Cancelado else "Pendiente"))
-#aqui son las consultas de una factura y muestra: consecutivo,fecha,niño,edad,total,estado, Cuando seleccionas una factura también muestra todos sus servicios
+    def seleccionar(self, _=None):
+        sel = self.tabla.selection()
+        if not sel: return
+        id_cita = int(sel[0])
+        fila = next((f for f in conexion.listar_citas(self.conn) if f[0] == id_cita), None)
+        if not fila: return
+        _, fecha_cita, cancelado, id_menor, nombre, ap1, ap2, fecha_nac, sexo = fila
+        menor = MenorEdad(nombre, ap1, ap2, sexo, fecha_nac)
+        servicios = conexion.obtener_servicios_de_cita(self.conn, id_cita)
+        subtotal, iva, total = conexion.calcular_totales(servicios)
+        self.factura = {"id_cita": id_cita, "cancelado": cancelado}
+        lineas = [f"Factura #{id_cita} - {fecha_cita}", f"Niño: {menor.nombre_completo} - Edad: {menor.calculo_Edad_Menor()} años", "",
+                    "Servicio                         Sin IVA        IVA 2%        Total", "-"*70]
+        for id_s, nombre_s, costo in servicios:
+            lineas.append(f"{nombre_s:<30} ₡{costo:>10,.2f}  ₡{costo*.02:>9,.2f}  ₡{costo*1.02:>10,.2f}")
+        lineas += ["-"*70, f"Subtotal: ₡{subtotal:,.2f}", f"IVA: ₡{iva:,.2f}", f"TOTAL: ₡{total:,.2f}"]
+        self.txt_detalle.config(state="normal"); self.txt_detalle.delete("1.0", "end"); self.txt_detalle.insert("1.0", "\n".join(lineas)); self.txt_detalle.config(state="disabled")
+        self.lbl_estado.config(text=f"Estado: {'Cancelado' if cancelado else 'Pendiente'}")
 
-    def seleccionar(self,_=None):
-        sel=self.tabla.selection()
-        if not sel:return
-        ident=int(self.tabla.item(sel[0],"values")[0]); self.factura=next((f for f in ServicioBrindado.facturas if f.ID_cita==ident),None)
-        if not self.factura:return
-        lineas=[f"Factura #{self.factura.ID_cita} - {self.factura.Fecha_Cita}",f"Niño: {self.factura.Menor.nombre_completo} - Edad: {self.factura.Menor.calculo_Edad_Menor()} años","","Servicio                         Sin IVA        IVA 2%        Total","-"*70]
-        for s in self.factura.Servicios: lineas.append(f"{s.Nombre_Servicio:<30} ₡{s.Costo:>10,.2f}  ₡{s.Costo*.02:>9,.2f}  ₡{s.Costo*1.02:>10,.2f}")
-        lineas += ["-"*70,f"Subtotal: ₡{self.factura.calcular_Subtotal():,.2f}",f"IVA: ₡{self.factura.calcular_IVA():,.2f}",f"TOTAL: ₡{self.factura.calcular_Total():,.2f}"]
-        self.txt_detalle.config(state="normal"); self.txt_detalle.delete("1.0","end"); self.txt_detalle.insert("1.0","\n".join(lineas)); self.txt_detalle.config(state="disabled")
-        self.lbl_estado.config(text=f"Estado: {'Cancelado' if self.factura.Cancelado else 'Pendiente'}")
-
-#aqui se cambia la factura a Cancelado y se registra el pago
     def pagar(self):
-        if not self.factura: messagebox.showwarning("Seleccione","Seleccione una factura."); return
-        if self.factura.Cancelado: messagebox.showinfo("Sin cambios","Esta factura ya está Cancelada y solo puede consultarse."); return
-        if messagebox.askyesno("Confirmar pago",f"¿Registrar el pago por ₡{self.factura.calcular_Total():,.2f}?\nDespués no se permitirán cambios en la factura."):
-            self.factura.Cancelado=True; self.guardar_cambios(); self.cargar_tabla(); self.lbl_estado.config(text="Estado: Cancelado"); messagebox.showinfo("Pago registrado","La factura quedó en estado Cancelado.")
+        if not self.factura: messagebox.showwarning("Seleccione", "Seleccione una factura."); return
+        if self.factura["cancelado"]: messagebox.showinfo("Sin cambios", "Esta factura ya está Cancelada y solo puede consultarse."); return
+        servicios = conexion.obtener_servicios_de_cita(self.conn, self.factura["id_cita"])
+        _, _, total = conexion.calcular_totales(servicios)
+        if messagebox.askyesno("Confirmar pago", f"¿Registrar el pago por ₡{total:,.2f}?\nDespués no se permitirán cambios en la factura."):
+            conexion.registrar_pago(self.conn, self.factura["id_cita"])
+            self.cargar_tabla(); self.lbl_estado.config(text="Estado: Cancelado")
+            messagebox.showinfo("Pago registrado", "La factura quedó en estado Cancelado.")

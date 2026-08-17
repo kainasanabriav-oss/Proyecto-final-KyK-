@@ -1,8 +1,6 @@
 
 class Encargado:
-
-    def __init__(self, ID_encargado, Nombre_Completo, Identificacion, Provincia, Canton, Distrito,
-                 Direccion, Telefono, Correo_Electronico):
+    def __init__(self, ID_encargado, Nombre_Completo, Identificacion, Provincia, Canton, Distrito,Direccion, Telefono, Correo_Electronico):
         self.ID_encargado = str(ID_encargado).strip()
         self.Nombre_Completo = Nombre_Completo
         self.Identificacion = Identificacion

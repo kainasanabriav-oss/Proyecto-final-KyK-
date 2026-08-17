@@ -1,17 +1,16 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from datetime import date
-from Encargado import Encargado
-from ServiciosDisponibles import ServiciosDisponibles
-from ServicioBrindado import ServicioBrindado
-from .Estilos import preparar_ventana, configurar_estilos, barra_superior, pasos, COLOR_FONDO, COLOR_BLANCO, COLOR_AZUL, COLOR_MENTA, COLOR_BORDE, COLOR_GRIS
-
+import odbc_conexion as conexion
+from .Estilos import preparar_ventana, configurar_estilos, barra_superior, pasos, COLOR_AZUL_CLARO, COLOR_FONDO, COLOR_BLANCO, COLOR_AZUL, COLOR_MENTA, COLOR_BORDE, COLOR_GRIS
 
 class InterfazFacturacion:
-    def __init__(self,master,funcionario,guardar_cambios):
-        self.funcionario=funcionario; self.guardar_cambios=guardar_cambios
-        self.ventana=tk.Toplevel(master); configurar_estilos(); preparar_ventana(self.ventana,"Atención / Facturación",1020,640)
-        self.servicios_agregados=[]; self.crear_interfaz(); self.cargar_datos()
+    def __init__(self, master, funcionario, conn):
+        self.funcionario = funcionario
+        self.conn = conn
+        self.ventana = tk.Toplevel(master); configurar_estilos(); preparar_ventana(self.ventana, "Atención / Facturación", 1020, 640)
+        self.servicios_agregados = []  # lista de tuplas (id_servicio, nombre, costo)
+        self.crear_interfaz(); self.cargar_datos()
 
     def crear_interfaz(self):
         barra_superior(self.ventana)
@@ -57,34 +56,54 @@ class InterfazFacturacion:
         ttk.Button(pie,text="Cerrar",command=self.ventana.destroy).pack(side="right",padx=8)
 
     def cargar_datos(self):
-        self.ninos={f"{m.ID_menorEdad} - {m.nombre_completo} ({m.calculo_Edad_Menor()} años)":m for _,m in Encargado.todos_los_menores()}; self.cbo_nino["values"]=list(self.ninos.keys())
-        self.servicios={f"{s.ID_Servicio} - {s.Nombre_Servicio}":s for s in ServiciosDisponibles.servicios}; self.cbo_servicio["values"]=list(self.servicios.keys())
+        self.ninos = {}
+        for id_m, nombre, ap1, ap2, sexo, fecha_nac, id_enc, nombre_enc, ident_enc in conexion.listar_menores(self.conn):
+            from MenorEdad import MenorEdad
+            edad = MenorEdad(nombre, ap1, ap2, sexo, fecha_nac).calculo_Edad_Menor()
+            clave = f"{id_m} - {nombre} {ap1} {ap2} ({edad} años)"
+            self.ninos[clave] = id_m
+        self.cbo_nino["values"] = list(self.ninos.keys())
+
+        self.servicios = {}
+        for id_s, nombre, costo, desc in conexion.listar_servicios(self.conn):
+            self.servicios[f"{id_s} - {nombre}"] = (id_s, nombre, costo)
+        self.cbo_servicio["values"] = list(self.servicios.keys())
 
     def agregar(self):
-        s=self.servicios.get(self.cbo_servicio.get())
-        if not s: messagebox.showwarning("Servicio","Seleccione un servicio."); return
+        s = self.servicios.get(self.cbo_servicio.get())
+        if not s: messagebox.showwarning("Servicio", "Seleccione un servicio."); return
         self.servicios_agregados.append(s); self.refrescar()
 
     def quitar(self):
-        sel=self.tabla.selection()
-        if not sel:return
-        idx=self.tabla.index(sel[0]); self.servicios_agregados.pop(idx); self.refrescar()
+        sel = self.tabla.selection()
+        if not sel: return
+        idx = self.tabla.index(sel[0]); self.servicios_agregados.pop(idx); self.refrescar()
 
-    #Esto sirve principalmente para actualizar visualmente la tabla y el total mientras el usuario agrega servicios
     def refrescar(self):
         for x in self.tabla.get_children(): self.tabla.delete(x)
-        total=0
-        for s in self.servicios_agregados:
-            iva=s.Costo*.02; total+=s.Costo+iva; self.tabla.insert("","end",values=(s.ID_Servicio,s.Nombre_Servicio,f"₡{s.Costo:,.2f}",f"₡{iva:,.2f}",f"₡{s.Costo+iva:,.2f}"))
+        total = 0
+        for id_s, nombre, costo in self.servicios_agregados:
+            iva = costo * .02; total += costo + iva
+            self.tabla.insert("", "end", values=(id_s, nombre, f"₡{costo:,.2f}", f"₡{iva:,.2f}", f"₡{costo+iva:,.2f}"))
         self.lbl_total.config(text=f"₡{total:,.2f}")
 
     def limpiar(self):
         self.cbo_nino.set(""); self.cbo_servicio.set(""); self.servicios_agregados.clear(); self.refrescar()
-    #Creacion de factura
+
     def guardar(self):
-        menor=self.ninos.get(self.cbo_nino.get())#verifica que haya niño
-        if not menor: messagebox.showwarning("Niño","Seleccione un niño."); return
-        if not self.servicios_agregados: messagebox.showwarning("Servicios","Agregue al menos un servicio."); return
-        fac=ServicioBrindado(menor,self.funcionario,date.today())
-        for s in self.servicios_agregados: fac.agregar_Servicio(s)
-        ServicioBrindado.facturas.append(fac); self.guardar_cambios(); messagebox.showinfo("Atención guardada",f"Factura/consecutivo #{fac.ID_cita} guardado como Pendiente.\nTotal: ₡{fac.calcular_Total():,.2f}"); self.limpiar()
+        id_menor = self.ninos.get(self.cbo_nino.get())
+        if not id_menor: messagebox.showwarning("Niño", "Seleccione un niño."); return
+        if not self.servicios_agregados: messagebox.showwarning("Servicios", "Agregue al menos un servicio."); return
+        try:
+            data = {
+                "id_funcionario": self.funcionario.ID_funcionario,
+                "fecha_cita": date.today(),
+                "id_menor_edad": id_menor,
+            }
+            ids_servicios = [id_s for id_s, _, _ in self.servicios_agregados]
+            total = sum(costo * 1.02 for _, _, costo in self.servicios_agregados)
+            id_cita = conexion.crear_cita(self.conn, data, ids_servicios)
+            messagebox.showinfo("Atención guardada", f"Factura/consecutivo #{id_cita} guardado como Pendiente.\nTotal: ₡{total:,.2f}")
+            self.limpiar()
+        except Exception as e:
+            messagebox.showerror("No se pudo guardar", str(e))

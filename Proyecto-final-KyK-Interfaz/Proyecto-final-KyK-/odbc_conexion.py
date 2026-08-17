@@ -378,3 +378,90 @@ def eliminar_servicio(conn: pyodbc.Connection, id_servicio: str) -> None:
     cursor = conn.cursor()
     cursor.execute("DELETE FROM ServiciosDisponibles WHERE id_servicio = ?", id_servicio)
     conn.commit()
+
+
+# ------------------------------------------------------------------
+# CRUD - SERVICIOS BRINDADOS (CITAS)
+# ------------------------------------------------------------------
+IVA_SERVICIO = 0.02
+
+def listar_citas(conn: pyodbc.Connection, filtro: str = ""):
+    cursor = conn.cursor()
+    base = """
+        SELECT c.id_cita, c.fecha_cita, c.cancelado, c.id_menor_edad,
+        m.nombre, m.primer_apellido, m.segundo_apellido, m.fecha_nacimiento, m.sexo
+        FROM ServiciosBrindados c
+        JOIN MenoresEdad m ON m.id_menor_edad = c.id_menor_edad
+    """
+    if filtro:
+        like = f"%{filtro}%"
+        cursor.execute(
+            base + """
+            WHERE CAST(c.id_cita AS VARCHAR) LIKE ? OR m.nombre LIKE ? OR m.primer_apellido LIKE ?
+            ORDER BY c.id_cita
+            """,
+            (like, like, like),
+        )
+    else:
+        cursor.execute(base + " ORDER BY c.id_cita")
+    return cursor.fetchall()
+
+
+def obtener_servicios_de_cita(conn: pyodbc.Connection, id_cita: int):
+    """Trae el detalle de servicios de una cita, con nombre y costo
+    actual de cada servicio (join con ServiciosDisponibles)."""
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT s.id_servicio, s.nombre_servicio, s.costo
+        FROM DetalleServiciosBrindados d
+        JOIN ServiciosDisponibles s ON s.id_servicio = d.id_servicio
+        WHERE d.id_cita = ?
+        ORDER BY s.nombre_servicio
+        """,
+        id_cita,
+    )
+    return cursor.fetchall()
+
+
+def crear_cita(conn: pyodbc.Connection, data: dict, ids_servicios: list) -> int:
+    """Crea la cabecera de la cita y su detalle de servicios en una
+    sola transacción. data: {id_funcionario, fecha_cita, id_menor_edad}
+    ids_servicios: lista de id_servicio (al menos uno)."""
+    if not ids_servicios:
+        raise ValueError("Debe agregar al menos un servicio.")
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            """
+            INSERT INTO ServiciosBrindados (id_funcionario, fecha_cita, cancelado, id_menor_edad)
+            OUTPUT INSERTED.id_cita
+            VALUES (?, ?, 0, ?)
+            """,
+            (data["id_funcionario"], data["fecha_cita"], data["id_menor_edad"]),
+        )
+        id_cita = cursor.fetchone()[0]
+        for id_servicio in ids_servicios:
+            cursor.execute(
+                "INSERT INTO DetalleServiciosBrindados (id_cita, id_servicio) VALUES (?, ?)",
+                (id_cita, id_servicio),
+            )
+        conn.commit()
+        return id_cita
+    except pyodbc.Error:
+        conn.rollback()
+        raise
+
+
+def registrar_pago(conn: pyodbc.Connection, id_cita: int) -> None:
+    cursor = conn.cursor()
+    cursor.execute("UPDATE ServiciosBrindados SET cancelado = 1 WHERE id_cita = ?", id_cita)
+    conn.commit()
+
+
+def calcular_totales(servicios) -> tuple:
+    """servicios: lista de tuplas (id_servicio, nombre, costo), como
+    la que regresa obtener_servicios_de_cita. Retorna (subtotal, iva, total)."""
+    subtotal = sum(costo for _, _, costo in servicios)
+    iva = subtotal * IVA_SERVICIO
+    return subtotal, iva, subtotal + iva
