@@ -104,21 +104,14 @@ class InterfazMenu:
         nav = tk.Frame(sidebar, bg=COLOR_BLANCO)
         nav.pack(fill="x", padx=18)
         opciones = [
-            ("🏠  Inicio", self.mostrar_inicio, True),
-            ("👨‍👩‍👧  Padres", lambda: InterfazPadres(self.root, self.conn), False),
-            ("🧒  Niños", lambda: InterfazNinos(self.root, self.conn), False),
-            ("🦷  Servicios", lambda: InterfazServicios(self.root, self.conn), False),
-            ("📝  Atenciones", lambda: InterfazFacturacion(self.root, self.funcionario, self.conn), False),
-            ("💳  Facturación", lambda: InterfazConsultaFacturas(self.root, self.conn), False),
-            ("👤  Funcionarios", lambda: InterfazFuncionarios(self.root, self.conn), False), #de guardar cambio a conn, de sql
+
         ]
         for texto, comando, activo in opciones:
             self._btn_sidebar(nav, texto, comando, activo)
 
-        tk.Frame(sidebar, bg=COLOR_BORDE, height=1).pack(fill="x", padx=18, pady=18)
         tk.Button(sidebar, text="Cerrar sesión", command=self.confirmar_salida, bg="#EF4444", fg="#FFFFFF",
                   activebackground="#DC2626", activeforeground="#FFFFFF", bd=0, relief="flat",
-                  font=("Segoe UI", 10, "bold"), cursor="hand2", pady=10).pack(fill="x", padx=18)
+                  font=("Segoe UI", 10, "bold"), cursor="hand2", pady=10).pack(side="bottom",fill="x", padx=18, pady=18)
 
         hero = tk.Frame(main, bg=COLOR_BLANCO, highlightbackground=COLOR_BORDE, highlightthickness=1)
         hero.pack(fill="x")

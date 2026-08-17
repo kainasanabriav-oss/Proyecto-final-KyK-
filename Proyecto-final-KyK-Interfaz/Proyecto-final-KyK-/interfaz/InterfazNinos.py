@@ -1,17 +1,17 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from datetime import datetime
-from Encargado import Encargado
 from MenorEdad import MenorEdad
 from .Estilos import preparar_ventana, configurar_estilos, barra_superior, pasos, COLOR_FONDO, COLOR_BLANCO, COLOR_AZUL, COLOR_MENTA, COLOR_BORDE, COLOR_GRIS, COLOR_AZUL_CLARO
-import odbc_conexion as conexion 
+import odbc_conexion as conexion
+
 
 class InterfazNinos:
     def __init__(self, master, conn):
         self.conn = conn
         self.ventana = tk.Toplevel(master)
         configurar_estilos()
-        preparar_ventana(self.ventana, "Niños", 1020, 640)
+        preparar_ventana(self.ventana, "Niños", 1080, 780)
         self.seleccionado = None
         self.menores_cache = {}
         self.crear_interfaz()
@@ -32,7 +32,7 @@ class InterfazNinos:
         pasos(interior, ["Información", "Padre", "Datos", "Revisión", "Resumen"], 1)
         tk.Label(interior, text="Registro y Mantenimiento de Niño", bg=COLOR_BLANCO, fg=COLOR_AZUL,
                  font=("Segoe UI", 19, "bold")).pack(anchor="w", pady=(0, 6))
-        tk.Label(interior, text="Aquí puedes registrar, editar, buscar y eliminar niños de forma más ordenada.",
+        tk.Label(interior, text="Aquí puedes registrar, editar, buscar y eliminar niños.",
                  bg=COLOR_BLANCO, fg=COLOR_GRIS, font=("Segoe UI", 9)).pack(anchor="w", pady=(0, 14))
 
         superior = tk.Frame(interior, bg=COLOR_BLANCO)
@@ -43,7 +43,7 @@ class InterfazNinos:
         busqueda_card.pack(side="left", fill="both", expand=True, padx=(0, 10))
         busq_cont = tk.Frame(busqueda_card, bg=COLOR_BLANCO, padx=12, pady=10)
         busq_cont.pack(fill="both", expand=True)
-        tk.Label(busq_cont, text="Buscar niño por nombre o identificación:", bg=COLOR_BLANCO, fg=COLOR_GRIS,
+        tk.Label(busq_cont, text="Buscar niño por nombre:", bg=COLOR_BLANCO, fg=COLOR_GRIS,
                  font=("Segoe UI", 9)).grid(row=0, column=0, sticky="w")
         self.txt_buscar = ttk.Entry(busq_cont, width=34)
         self.txt_buscar.grid(row=1, column=0, sticky="ew", pady=(6, 0))
@@ -75,27 +75,23 @@ class InterfazNinos:
         self.cbo_padre = ttk.Combobox(form, state="readonly", width=34)
         self.cbo_padre.grid(row=0, column=1, sticky="ew", padx=(0, 18), pady=6)
 
-        tk.Label(form, text="Identificación niño:", bg=COLOR_BLANCO, fg=COLOR_AZUL, font=("Segoe UI", 9, "bold")).grid(row=0, column=2, sticky="w", padx=(0, 8), pady=6)
-        self.entradas["Identificación niño"] = ttk.Entry(form, width=28)
-        self.entradas["Identificación niño"].grid(row=0, column=3, sticky="ew", pady=6)
-
         labels = [
-            ("Nombre", 1, 0),
-            ("Primer apellido", 1, 2),
-            ("Segundo apellido", 2, 0),
-            ("Fecha nacimiento (AAAA-MM-DD)", 2, 2),
+            ("Nombre", 0, 2),
+            ("Primer apellido", 1, 0),
+            ("Segundo apellido", 1, 2),
+            ("Fecha nacimiento (AAAA-MM-DD)", 2, 0),
         ]
         for campo, fila, col in labels:
             tk.Label(form, text=campo + ":", bg=COLOR_BLANCO, fg=COLOR_AZUL, font=("Segoe UI", 9, "bold")).grid(row=fila, column=col, sticky="w", padx=(0, 8), pady=6)
             self.entradas[campo] = ttk.Entry(form, width=28)
             self.entradas[campo].grid(row=fila, column=col+1, sticky="ew", padx=(0, 18), pady=6)
 
-        tk.Label(form, text="Sexo:", bg=COLOR_BLANCO, fg=COLOR_AZUL, font=("Segoe UI", 9, "bold")).grid(row=3, column=0, sticky="w", padx=(0, 8), pady=6)
+        tk.Label(form, text="Sexo:", bg=COLOR_BLANCO, fg=COLOR_AZUL, font=("Segoe UI", 9, "bold")).grid(row=2, column=2, sticky="w", padx=(0, 8), pady=6)
         self.cbo_sexo = ttk.Combobox(form, values=["Masculino", "Femenino", "Otro"], state="readonly", width=26)
-        self.cbo_sexo.grid(row=3, column=1, sticky="ew", padx=(0, 18), pady=6)
+        self.cbo_sexo.grid(row=2, column=3, sticky="ew", padx=(0, 18), pady=6)
 
         ayuda = tk.Frame(form, bg=COLOR_AZUL_CLARO, highlightbackground=COLOR_BORDE, highlightthickness=1)
-        ayuda.grid(row=3, column=2, columnspan=2, sticky="ew", pady=6)
+        ayuda.grid(row=3, column=0, columnspan=4, sticky="ew", pady=6)
         tk.Label(ayuda, text="La edad se calcula automáticamente al seleccionar o guardar.", bg=COLOR_AZUL_CLARO,
                  fg=COLOR_GRIS, font=("Segoe UI", 8)).pack(anchor="w", padx=10, pady=8)
 
@@ -118,7 +114,7 @@ class InterfazNinos:
 
         cols = ("id", "nombre", "padre", "fecha", "edad", "sexo")
         self.tabla = ttk.Treeview(tabla_wrap, columns=cols, show="headings", height=8)
-        for c, t, w in [("id", "Identificación", 120), ("nombre", "Nombre completo", 220), ("padre", "Padre", 220), ("fecha", "F. nacimiento", 120), ("edad", "Edad", 70), ("sexo", "Sexo", 90)]:
+        for c, t, w in [("id", "Identificación", 120), ("nombre", "Nombre completo", 220), ("padre", "Padre", 220), ("fecha", "Fecha de nacimiento", 120), ("edad", "Edad", 70), ("sexo", "Sexo", 90)]:
             self.tabla.heading(c, text=t)
             self.tabla.column(c, width=w)
         self.tabla.pack(fill="both", expand=True)
@@ -136,17 +132,27 @@ class InterfazNinos:
         self.cargar_tabla()
 
     def cargar_tabla(self):
-        self.cargar_padres()
-        for x in self.tabla.get_children():
-            self.tabla.delete(x)
-        self.menores_cache = {}
-        criterio = self.txt_buscar.get().strip()
-        for fila in conexion.listar_menores(self.conn, criterio):
-            id_m, nombre, ap1, ap2, sexo, fecha_nac, id_enc, nombre_enc, ident_enc = fila
-            self.menores_cache[id_m] = fila
-            edad = MenorEdad(nombre, ap1, ap2, sexo, fecha_nac, id_enc, id_m).calculo_Edad_Menor()
-            nombre_completo = f"{nombre} {ap1} {ap2}".strip()
-            self.tabla.insert("", "end", iid=str(id_m), values=(id_m, nombre_completo, nombre_enc, fecha_nac, edad, sexo))
+        try:
+            self.cargar_padres()
+            for x in self.tabla.get_children():
+                self.tabla.delete(x)
+            self.menores_cache = {}
+            criterio = self.txt_buscar.get().strip()
+            for fila in conexion.listar_menores(self.conn, criterio):
+                id_m, nombre, ap1, ap2, sexo, fecha_nac, id_enc, nombre_enc, ident_enc = fila
+                self.menores_cache[id_m] = fila
+                edad = MenorEdad(nombre, ap1, ap2, sexo, fecha_nac, id_enc, id_m).calculo_Edad_Menor()
+                nombre_completo = f"{nombre} {ap1} {ap2}".strip()
+                self.tabla.insert("", "end", iid=str(id_m), values=(id_m, nombre_completo, nombre_enc, fecha_nac, edad, sexo))
+
+            if criterio and len(self.menores_cache) == 1:
+                unico_id = next(iter(self.menores_cache))
+                self.tabla.selection_set(str(unico_id))
+                self.seleccionar()
+            elif criterio and len(self.menores_cache) == 0:
+                messagebox.showinfo("Sin resultados", "No se encontró ningún niño con ese criterio.")
+        except Exception as e:
+            messagebox.showerror("Error al buscar", str(e))
 
     def seleccionar(self, _=None):
         sel = self.tabla.selection()
@@ -205,7 +211,6 @@ class InterfazNinos:
             data = self._datos()
             conexion.actualizar_menor(self.conn, self.seleccionado, data)
             self.cargar_tabla()
-            self.lbl_edad.config(text=f"{MenorEdad(**{**data, 'ID_encargado': data['id_encargado']}).calculo_Edad_Menor()} años" if False else self.lbl_edad.cget("text"))
             messagebox.showinfo("Modificado", "Datos del niño actualizados.")
         except Exception as e:
             messagebox.showerror("No se pudo modificar", str(e))
