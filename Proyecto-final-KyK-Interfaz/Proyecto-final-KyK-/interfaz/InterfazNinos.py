@@ -132,27 +132,24 @@ class InterfazNinos:
         self.cargar_tabla()
 
     def cargar_tabla(self):
-        try:
-            self.cargar_padres()
-            for x in self.tabla.get_children():
-                self.tabla.delete(x)
-            self.menores_cache = {}
-            criterio = self.txt_buscar.get().strip()
-            for fila in conexion.listar_menores(self.conn, criterio):
-                id_m, nombre, ap1, ap2, sexo, fecha_nac, id_enc, nombre_enc, ident_enc = fila
-                self.menores_cache[id_m] = fila
-                edad = MenorEdad(nombre, ap1, ap2, sexo, fecha_nac, id_enc, id_m).calculo_Edad_Menor()
-                nombre_completo = f"{nombre} {ap1} {ap2}".strip()
-                self.tabla.insert("", "end", iid=str(id_m), values=(id_m, nombre_completo, nombre_enc, fecha_nac, edad, sexo))
+        self.cargar_padres()
+        for x in self.tabla.get_children():
+            self.tabla.delete(x)
+        self.menores_cache = {}
+        criterio = self.txt_buscar.get().strip()
+        for fila in conexion.listar_menores(self.conn, criterio):
+            id_m, nombre, ap1, ap2, sexo, fecha_nac, id_enc, nombre_enc, ident_enc = fila
+            self.menores_cache[id_m] = fila
+            edad = MenorEdad(nombre, ap1, ap2, sexo, fecha_nac, id_enc, id_m).calculo_Edad_Menor()
+            nombre_completo = f"{nombre} {ap1} {ap2}".strip()
+            self.tabla.insert("", "end", iid=str(id_m), values=(id_m, nombre_completo, nombre_enc, fecha_nac, edad, sexo))
 
-            if criterio and len(self.menores_cache) == 1:
-                unico_id = next(iter(self.menores_cache))
-                self.tabla.selection_set(str(unico_id))
-                self.seleccionar()
-            elif criterio and len(self.menores_cache) == 0:
-                messagebox.showinfo("Sin resultados", "No se encontró ningún niño con ese criterio.")
-        except Exception as e:
-            messagebox.showerror("Error al buscar", str(e))
+        if criterio and len(self.menores_cache) == 1:
+            unico_id = next(iter(self.menores_cache))
+            self.tabla.selection_set(str(unico_id))
+            self.seleccionar()
+        elif criterio and len(self.menores_cache) == 0:
+            messagebox.showinfo("Sin resultados", "No se encontró ningún niño con ese criterio.")
 
     def seleccionar(self, _=None):
         sel = self.tabla.selection()
