@@ -1,6 +1,6 @@
 
 class Funcionario:
-    usuario_Actual = None
+    usuario_Actual = None ##esto se usa para cosas como impedir que una persona elimine su propio funcionario mientras tiene la sesión abierta
 
     def __init__(self, ID_funcionario, Usuario, Nombre_Completo, Contrasena, Estado=True): #ahora las clases solamente van a tener constructores+setter,getter, sin metodos de clase
         self.ID_funcionario = ID_funcionario

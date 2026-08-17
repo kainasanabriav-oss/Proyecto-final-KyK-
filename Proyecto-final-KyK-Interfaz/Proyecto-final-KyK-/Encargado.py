@@ -18,7 +18,7 @@ class Encargado:
         self.Direccion = Direccion
         self.Telefono = Telefono
         self.Correo_Electronico = Correo_Electronico
-        self.menoresEdad = []
+        self.menoresEdad = []#se guardan los niños
 
     @property
     def Nombre_Completo(self):

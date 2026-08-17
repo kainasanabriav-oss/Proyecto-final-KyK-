@@ -70,6 +70,7 @@ class InterfazFacturacion:
         if not sel:return
         idx=self.tabla.index(sel[0]); self.servicios_agregados.pop(idx); self.refrescar()
 
+    #Esto sirve principalmente para actualizar visualmente la tabla y el total mientras el usuario agrega servicios
     def refrescar(self):
         for x in self.tabla.get_children(): self.tabla.delete(x)
         total=0
@@ -79,9 +80,9 @@ class InterfazFacturacion:
 
     def limpiar(self):
         self.cbo_nino.set(""); self.cbo_servicio.set(""); self.servicios_agregados.clear(); self.refrescar()
-
+    #Creacion de factura
     def guardar(self):
-        menor=self.ninos.get(self.cbo_nino.get())
+        menor=self.ninos.get(self.cbo_nino.get())#verifica que haya niño
         if not menor: messagebox.showwarning("Niño","Seleccione un niño."); return
         if not self.servicios_agregados: messagebox.showwarning("Servicios","Agregue al menos un servicio."); return
         fac=ServicioBrindado(menor,self.funcionario,date.today())

@@ -8,7 +8,7 @@ import odbc_conexion as conexion
 
 class InterfazFuncionarios:
     def __init__(self, master, conn): #conn viene de sql
-        self.conn = conn
+        self.conn = conn #consultar SQL cuando sea necesario
         self.ventana = tk.Toplevel(master)
         configurar_estilos(); preparar_ventana(self.ventana, "Funcionarios", 1020, 640) #configuraciones de la ventana segun el estilo
         self.seleccionado = None

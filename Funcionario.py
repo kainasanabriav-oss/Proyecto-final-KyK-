@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 #Clase funcionario, la cual va a ser necesaria validar para poder acceder a las demas acciones del programa
 
 class Funcionario: #
+    
 
     funcionarios=[] #listas creadas a partir de las clases
     usuario_Actual= ""

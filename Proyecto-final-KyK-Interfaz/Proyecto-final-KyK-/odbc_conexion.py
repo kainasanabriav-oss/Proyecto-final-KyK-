@@ -7,6 +7,7 @@ class conexionBD:
         self.driver = "ODBC Driver 18 for SQL Server"
         self.trust = "yes"
 
+#aqui se conecta a la base de datos
     def obtener_conexion(self):
         cadena = (
             f"DRIVER={self.driver};"
@@ -14,7 +15,7 @@ class conexionBD:
             f"DATABASE={self.base_datos};"
             f"TrustServerCertificate={self.trust};"
         )
-        return pyodbc.connect(cadena)
+        return pyodbc.connect(cadena)#se abre con
 
 def login(usuario: str, contrasena: str): #usado para el log in del inicio, comprueba las credenciales
     """
@@ -22,8 +23,8 @@ def login(usuario: str, contrasena: str): #usado para el log in del inicio, comp
     Si algo falla, lanza ValueError con el mensaje correspondiente.
     """
     bd = conexionBD() #declaramos la clase conexion BD
-    conn = bd.obtener_conexion() #llamamos a bd y de esta manera llamar a obtener conexion
-    cursor = conn.cursor() #se llama a si mismo dentro de conn
+    conn = bd.obtener_conexion() #llamamos a bd y de esta manera llamar a obtener conexion/python se conecta a sql
+    cursor = conn.cursor() #se llama a si mismo dentro de conn/para poder hacer consultas/recupera una sola fila del resultado Como estamos buscando un usuario específico, esperamos máximo un funcionario
 
     cursor.execute(
         """
@@ -35,12 +36,12 @@ def login(usuario: str, contrasena: str): #usado para el log in del inicio, comp
     )
     row = cursor.fetchone() #fetchone trae una sola fila del resultado como tupla
 
-    if row is None: #si el usuario no es valido o no lo encuentra
-        conn.close()
+    if row is None: #si el usuario no es valido o no lo encuentra/SQL no encontró ese usuario
+        conn.close()#cierra
         raise ValueError("Usuario no encontrado")
 
-    id_funcionario, usuario,nombre_completo, estado,contrasena_guardada = row
-
+    id_funcionario, usuario,nombre_completo, estado,contrasena_guardada = row #devuelve todos estos valores
+#validaciones del login
     if not estado: #usuario inactivo segun la tabla
         conn.close()
         raise ValueError("Usuario inactivo")
@@ -63,7 +64,8 @@ def login(usuario: str, contrasena: str): #usado para el log in del inicio, comp
 COLUMNAS_FUNCIONARIO = [
     "id_funcionario", "usuario", "nombre_completo", "estado", "contrasena",
 ]
-
+#consultas SQL de funcionarios
+#está la consulta que muestra los funcionarios
 def listar_funcionarios(conn: pyodbc.Connection, filtro: str = ""): #conn: pyodbc.Connection, se espera que sea un objeto de conexión de pyodbc. 
     cursor = conn.cursor()
     if filtro:
@@ -81,7 +83,7 @@ def listar_funcionarios(conn: pyodbc.Connection, filtro: str = ""): #conn: pyodb
         cursor.execute(
             f"SELECT {', '.join(COLUMNAS_FUNCIONARIO)} FROM Funcionario ORDER BY id_funcionario"
         )
-    return cursor.fetchall()
+    return cursor.fetchall()#trae todas las filas obtenidas
 
 
 def obtener_funcionario_por_usuario(conn: pyodbc.Connection, usuario: str):
@@ -106,7 +108,7 @@ def crear_funcionario(conn: pyodbc.Connection, data: dict) -> None: #data: dict 
             data["estado"], data["contrasena"],
         ),
     )
-    conn.commit()
+    conn.commit()#hace permanente el cambio realizado en la base de datos
 
 
 def actualizar_funcionario(conn: pyodbc.Connection, id_funcionario: str, data: dict) -> None:
@@ -115,7 +117,7 @@ def actualizar_funcionario(conn: pyodbc.Connection, id_funcionario: str, data: d
         """
         UPDATE Funcionario
         SET usuario = ?, nombre_completo = ?, estado = ?, contrasena = ?
-        WHERE id_funcionario = ?
+        WHERE id_funcionario = ?  #Eso determina cuál funcionario se modifica
         """,
         (
             data["usuario"], data["nombre_completo"], data["estado"],

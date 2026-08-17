@@ -6,6 +6,7 @@ from .Estilos import preparar_ventana, configurar_estilos, barra_superior, COLOR
 class InterfazConsultaFacturas:
     def __init__(self,master,guardar_cambios):
         self.guardar_cambios=guardar_cambios; self.ventana=tk.Toplevel(master); configurar_estilos(); preparar_ventana(self.ventana,"Consulta de Facturas",1020,640); self.factura=None; self.crear_interfaz(); self.cargar_tabla()
+
     def crear_interfaz(self):
         barra_superior(self.ventana)
         cuerpo=tk.Frame(self.ventana,bg=COLOR_FONDO); cuerpo.pack(fill="both",expand=True)
@@ -28,13 +29,18 @@ class InterfazConsultaFacturas:
         self.lbl_estado=tk.Label(pie,text="Seleccione una factura",bg=COLOR_BLANCO,fg=COLOR_MENTA,font=("Segoe UI",10,"bold")); self.lbl_estado.pack(side="left")
         ttk.Button(pie,text="Registrar Pago",command=self.pagar,style="Menta.TButton").pack(side="right")
         ttk.Button(pie,text="Cerrar",command=self.ventana.destroy).pack(side="right",padx=8)
+
     def todos(self): self.txt_buscar.delete(0,"end"); self.cargar_tabla()
+
     def cargar_tabla(self):
         for x in self.tabla.get_children(): self.tabla.delete(x)
         q=self.txt_buscar.get().strip().lower()
+
         for f in ServicioBrindado.facturas:
             if q and q not in str(f.ID_cita).lower() and q not in f.Menor.nombre_completo.lower() and q not in str(f.Menor.ID_menorEdad).lower(): continue
             self.tabla.insert("","end",values=(f.ID_cita,f.Fecha_Cita,f.Menor.nombre_completo,f.Menor.calculo_Edad_Menor(),f"₡{f.calcular_Total():,.2f}","Cancelado" if f.Cancelado else "Pendiente"))
+#aqui son las consultas de una factura y muestra: consecutivo,fecha,niño,edad,total,estado, Cuando seleccionas una factura también muestra todos sus servicios
+
     def seleccionar(self,_=None):
         sel=self.tabla.selection()
         if not sel:return
@@ -45,6 +51,8 @@ class InterfazConsultaFacturas:
         lineas += ["-"*70,f"Subtotal: ₡{self.factura.calcular_Subtotal():,.2f}",f"IVA: ₡{self.factura.calcular_IVA():,.2f}",f"TOTAL: ₡{self.factura.calcular_Total():,.2f}"]
         self.txt_detalle.config(state="normal"); self.txt_detalle.delete("1.0","end"); self.txt_detalle.insert("1.0","\n".join(lineas)); self.txt_detalle.config(state="disabled")
         self.lbl_estado.config(text=f"Estado: {'Cancelado' if self.factura.Cancelado else 'Pendiente'}")
+
+#aqui se cambia la factura a Cancelado y se registra el pago
     def pagar(self):
         if not self.factura: messagebox.showwarning("Seleccione","Seleccione una factura."); return
         if self.factura.Cancelado: messagebox.showinfo("Sin cambios","Esta factura ya está Cancelada y solo puede consultarse."); return
