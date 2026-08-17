@@ -8,7 +8,6 @@ from .InterfazServicios import InterfazServicios
 from .InterfazFacturacion import InterfazFacturacion
 from .InterfazConsultaFacturas import InterfazConsultaFacturas
 
-
 class InterfazMenu:
     def __init__(self, root,conn, funcionario, cerrar_sesion):
         self.root = root
@@ -116,7 +115,7 @@ class InterfazMenu:
         hero = tk.Frame(main, bg=COLOR_BLANCO, highlightbackground=COLOR_BORDE, highlightthickness=1)
         hero.pack(fill="x")
         tk.Label(hero, text="Menú Principal", bg=COLOR_BLANCO, fg=COLOR_AZUL, font=("Segoe UI", 24, "bold")).pack(anchor="w", padx=24, pady=(20, 0))
-        tk.Label(hero, text="Selecciona la opción que deseas abrir. Todo queda en la misma estética y es más fácil de ubicar.",
+        tk.Label(hero, text="Selecciona la opción que deseas abrir.",
                  bg=COLOR_BLANCO, fg=COLOR_GRIS, font=("Segoe UI", 10)).pack(anchor="w", padx=24, pady=(4, 18))
 
         accesos_wrap = tk.Frame(main, bg=COLOR_FONDO)
