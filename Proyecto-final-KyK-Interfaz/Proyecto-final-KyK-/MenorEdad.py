@@ -1,14 +1,16 @@
 from datetime import date, datetime
 
 
+
 class MenorEdad:
-    def __init__(self, ID_menorEdad, Nombre, Primer_Apellido, Segundo_Apellido, Sexo, Fecha_Nacimiento):
+    def __init__(self, Nombre, Primer_Apellido, Segundo_Apellido, Sexo, Fecha_Nacimiento, ID_encargado=None, ID_menorEdad=None):
         self.ID_menorEdad = ID_menorEdad
         self.Nombre = Nombre
         self.Primer_Apellido = Primer_Apellido
         self.Segundo_Apellido = Segundo_Apellido
         self.Sexo = Sexo
         self.Fecha_Nacimiento = Fecha_Nacimiento
+        self.ID_encargado = ID_encargado
 
     @property
     def ID_menorEdad(self):
@@ -16,10 +18,7 @@ class MenorEdad:
 
     @ID_menorEdad.setter
     def ID_menorEdad(self, valor):
-        valor = str(valor).strip()
-        if not valor:
-            raise ValueError("La identificación del niño no puede estar vacía.")
-        self.__ID_menorEdad = valor
+        self.__ID_menorEdad = int(valor) if valor is not None else None
 
     @property
     def Nombre(self):
