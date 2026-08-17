@@ -1,16 +1,18 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from ServiciosDisponibles import ServiciosDisponibles
+import odbc_conexion as conexion
 from .Estilos import preparar_ventana, configurar_estilos, barra_superior, pasos, COLOR_FONDO, COLOR_BLANCO, COLOR_AZUL, COLOR_MENTA, COLOR_BORDE, COLOR_GRIS, COLOR_AZUL_CLARO
 
 
 class InterfazServicios:
-    def __init__(self, master, guardar_cambios):
-        self.guardar_cambios = guardar_cambios
+    def __init__(self, master, conn):
+        self.conn = conn
         self.ventana = tk.Toplevel(master)
         configurar_estilos()
         preparar_ventana(self.ventana, "Servicios", 1020, 640)
         self.seleccionado = None
+        self.servicios_cache = {}
         self.crear_interfaz()
         self.cargar_tabla()
 
@@ -85,20 +87,24 @@ class InterfazServicios:
     def cargar_tabla(self):
         for x in self.tabla.get_children():
             self.tabla.delete(x)
-        for s in ServiciosDisponibles.servicios:
-            iva = s.Costo * .02
-            self.tabla.insert("", "end", values=(s.ID_Servicio, s.Nombre_Servicio, f"₡{s.Costo:,.2f}", f"₡{iva:,.2f}", f"₡{s.Costo+iva:,.2f}"))
+        self.servicios_cache = {}
+        for id_s, nombre, costo, desc in conexion.listar_servicios(self.conn):
+            self.servicios_cache[id_s] = (id_s, nombre, costo, desc)
+            iva = costo * .02
+            self.tabla.insert("", "end", iid=id_s,values=(id_s, nombre, f"₡{costo:,.2f}", f"₡{iva:,.2f}", f"₡{costo+iva:,.2f}"))
 
     def seleccionar(self, _=None):
         sel = self.tabla.selection()
         if not sel:
             return
-        codigo = str(self.tabla.item(sel[0], "values")[0])
-        self.seleccionado = next((s for s in ServiciosDisponibles.servicios if s.ID_Servicio == codigo), None)
-        if self.seleccionado:
-            for e, v in [(self.txt_codigo, self.seleccionado.ID_Servicio), (self.txt_nombre, self.seleccionado.Nombre_Servicio), (self.txt_costo, self.seleccionado.Costo), (self.txt_desc, self.seleccionado.Descripcion)]:
-                e.delete(0, "end")
-                e.insert(0, v)
+        fila = self.servicios_cache.get(sel[0])
+        if not fila:
+            return
+        self.seleccionado = sel[0]
+        id_s, nombre, costo, desc = fila
+        for e, v in [(self.txt_codigo, id_s), (self.txt_nombre, nombre), (self.txt_costo, costo), (self.txt_desc, desc)]:
+            e.delete(0, "end")
+            e.insert(0, v)
 
     def limpiar(self):
         self.seleccionado = None
@@ -106,17 +112,20 @@ class InterfazServicios:
             e.delete(0, "end")
 
     def _datos(self):
-        return self.txt_codigo.get().strip(), self.txt_nombre.get().strip(), float(self.txt_costo.get().strip()), self.txt_desc.get().strip()
+        return {
+            "id_servicio": self.txt_codigo.get().strip(),
+            "nombre_servicio": self.txt_nombre.get().strip(),
+            "costo": float(self.txt_costo.get().strip()),
+            "descripcion": self.txt_desc.get().strip(),
+        }
 
     def guardar(self):
         try:
-            c, n, p, d = self._datos()
-            if any(s.ID_Servicio == c for s in ServiciosDisponibles.servicios):
+            data = self._datos()
+            if conexion.obtener_servicio(self.conn, data["id_servicio"]):
                 raise ValueError("Ya existe ese código de servicio.")
-            ServiciosDisponibles.servicios.append(ServiciosDisponibles(c, n, p, d))
-            self.guardar_cambios()
-            self.cargar_tabla()
-            self.limpiar()
+            conexion.crear_servicio(self.conn, data)
+            self.cargar_tabla(); self.limpiar()
             messagebox.showinfo("Guardado", "Servicio registrado.")
         except Exception as e:
             messagebox.showerror("No se pudo guardar", str(e))
@@ -126,14 +135,10 @@ class InterfazServicios:
             messagebox.showwarning("Seleccione", "Seleccione un servicio.")
             return
         try:
-            c, n, p, d = self._datos()
-            if any(s.ID_Servicio == c and s is not self.seleccionado for s in ServiciosDisponibles.servicios):
-                raise ValueError("Ese código ya está ocupado.")
-            self.seleccionado.ID_Servicio = c
-            self.seleccionado.Nombre_Servicio = n
-            self.seleccionado.Costo = float(p)
-            self.seleccionado.Descripcion = d
-            self.guardar_cambios()
+            data = self._datos()
+            if data["id_servicio"] != self.seleccionado:
+                raise ValueError("El código de servicio no se puede modificar.")
+            conexion.actualizar_servicio(self.conn, self.seleccionado, data)
             self.cargar_tabla()
             messagebox.showinfo("Modificado", "Servicio actualizado.")
         except Exception as e:
@@ -143,8 +148,10 @@ class InterfazServicios:
         if not self.seleccionado:
             messagebox.showwarning("Seleccione", "Seleccione un servicio.")
             return
+        citas = conexion.contar_citas_de_servicio(self.conn, self.seleccionado)
+        if citas > 0:
+            messagebox.showwarning("No permitido", f"Este servicio tiene {citas} cita(s) registrada(s) y no puede eliminarse.")
+            return
         if messagebox.askyesno("Confirmar", "¿Desea eliminar el servicio seleccionado?"):
-            ServiciosDisponibles.servicios.remove(self.seleccionado)
-            self.guardar_cambios()
-            self.cargar_tabla()
-            self.limpiar()
+            conexion.eliminar_servicio(self.conn, self.seleccionado)
+            self.cargar_tabla(); self.limpiar()

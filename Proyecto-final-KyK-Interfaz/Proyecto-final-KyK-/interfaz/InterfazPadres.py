@@ -1,22 +1,24 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from Encargado import Encargado
+import odbc_conexion as conexion 
 from .Estilos import (preparar_ventana, configurar_estilos, barra_superior, pasos,
                       COLOR_FONDO, COLOR_BLANCO, COLOR_AZUL, COLOR_MENTA,
                       COLOR_BORDE, COLOR_GRIS)
 
 
 class InterfazPadres:
-    def __init__(self, master, guardar_cambios):
-        self.guardar_cambios = guardar_cambios
+    def __init__(self, master, conn):
+        self.conn=conn
         self.ventana = tk.Toplevel(master)
         configurar_estilos()
         preparar_ventana(self.ventana, "Padres / Encargados", 1020, 640)
         self.seleccionado = None
+        self.encargados_cache = {}
         self.crear_interfaz()
         self.cargar_tabla()
 
-    def crear_interfaz(self):
+    def crear_interfaz(self): #la interfaz grafica en si, 
         barra_superior(self.ventana)
         cuerpo = tk.Frame(self.ventana, bg=COLOR_FONDO)
         cuerpo.pack(fill="both", expand=True)
@@ -79,23 +81,24 @@ class InterfazPadres:
     def cargar_tabla(self):
         for item in self.tabla.get_children():
             self.tabla.delete(item)
-        criterio = self.txt_buscar.get().strip().lower()
-        for enc in Encargado.encargados:
-            if criterio and criterio not in enc.Nombre_Completo.lower() and criterio not in enc.Identificacion.lower():
-                continue
-            self.tabla.insert("", "end", iid=str(id(enc)), values=(enc.Identificacion, enc.Nombre_Completo, enc.Telefono, enc.Correo_Electronico))
+        criterio = self.txt_buscar.get().strip()
+        self.encargados_cache = {}
+        for fila in conexion.listar_encargados(self.conn, criterio):
+            id_enc, nombre, ident, direccion, provincia, canton, distrito, telefono, correo = fila
+            self.encargados_cache[id_enc] = fila
+            self.tabla.insert("", "end", iid=str(id_enc), values=(ident, nombre, telefono, correo))
 
     def seleccionar(self, _evento=None):
         sel = self.tabla.selection()
         if not sel:
             return
-        item = self.tabla.item(sel[0], "values")
-        self.seleccionado = Encargado.buscar_por_identificacion(item[0])
-        if not self.seleccionado:
+        id_enc = int(sel[0])
+        fila = self.encargados_cache.get(id_enc)
+        if not fila:
             return
-        datos = [self.seleccionado.Identificacion, self.seleccionado.Nombre_Completo, self.seleccionado.Provincia,
-                 self.seleccionado.Canton, self.seleccionado.Distrito, self.seleccionado.Direccion,
-                 self.seleccionado.Telefono, self.seleccionado.Correo_Electronico]
+        self.seleccionado = id_enc
+        _, nombre, ident, direccion, provincia, canton, distrito, telefono, correo = fila
+        datos = [ident, nombre, provincia, canton, distrito, direccion, telefono, correo]
         for entrada, valor in zip(self.entradas.values(), datos):
             entrada.delete(0, "end")
             entrada.insert(0, valor)
@@ -106,16 +109,20 @@ class InterfazPadres:
             entrada.delete(0, "end")
 
     def _datos(self):
-        return [e.get().strip() for e in self.entradas.values()]
+        ident, nombre, provincia, canton, distrito, direccion, telefono, correo = \
+            [e.get().strip() for e in self.entradas.values()]
+        return {
+            "identificacion": ident, "nombre_completo": nombre, "provincia": provincia,
+            "canton": canton, "distrito": distrito, "direccion": direccion,
+            "telefono": telefono, "correo_electronico": correo,
+        }
 
     def guardar(self):
         try:
-            identificacion, nombre, provincia, canton, distrito, direccion, telefono, correo = self._datos()
-            if Encargado.buscar_por_identificacion(identificacion):
+            data = self._datos()
+            if conexion.obtener_encargado_por_identificacion(self.conn, data["identificacion"]):
                 raise ValueError("Ya existe un padre con esa identificación.")
-            nuevo = Encargado(str(len(Encargado.encargados)+1), nombre, identificacion, provincia, canton, distrito, direccion, telefono, correo)
-            Encargado.encargados.append(nuevo)
-            self.guardar_cambios()
+            conexion.crear_encargado(self.conn, data)
             self.cargar_tabla(); self.limpiar_formulario()
             messagebox.showinfo("Guardado", "Padre/encargado registrado correctamente.")
         except Exception as e:
@@ -126,15 +133,12 @@ class InterfazPadres:
             messagebox.showwarning("Seleccione un registro", "Seleccione un padre de la tabla.")
             return
         try:
-            identificacion, nombre, provincia, canton, distrito, direccion, telefono, correo = self._datos()
-            otro = Encargado.buscar_por_identificacion(identificacion)
-            if otro and otro is not self.seleccionado:
+            data = self._datos()
+            otro = conexion.obtener_encargado_por_identificacion(self.conn, data["identificacion"])
+            if otro and otro[0] != self.seleccionado:
                 raise ValueError("Esa identificación ya pertenece a otro padre.")
-            self.seleccionado.Identificacion = identificacion
-            self.seleccionado.Nombre_Completo = nombre
-            self.seleccionado.Provincia, self.seleccionado.Canton, self.seleccionado.Distrito = provincia, canton, distrito
-            self.seleccionado.Direccion, self.seleccionado.Telefono, self.seleccionado.Correo_Electronico = direccion, telefono, correo
-            self.guardar_cambios(); self.cargar_tabla()
+            conexion.actualizar_encargado(self.conn, self.seleccionado, data)
+            self.cargar_tabla()
             messagebox.showinfo("Modificado", "Datos actualizados correctamente.")
         except Exception as e:
             messagebox.showerror("No se pudo modificar", str(e))
@@ -143,10 +147,11 @@ class InterfazPadres:
         if not self.seleccionado:
             messagebox.showwarning("Seleccione un registro", "Seleccione un padre de la tabla.")
             return
-        if self.seleccionado.menoresEdad:
-            mensaje = "Este padre tiene niños registrados. Si lo elimina también se eliminarán de su registro. ¿Continuar?"
+        cantidad = conexion.contar_menores_de_encargado(self.conn, self.seleccionado)
+        if cantidad > 0:
+            mensaje = f"Este padre tiene {cantidad} niño(s) registrado(s). Si lo elimina también se eliminarán. ¿Continuar?"
         else:
             mensaje = "¿Desea eliminar el padre seleccionado?"
         if messagebox.askyesno("Confirmar eliminación", mensaje):
-            Encargado.encargados.remove(self.seleccionado)
-            self.guardar_cambios(); self.cargar_tabla(); self.limpiar_formulario()
+            conexion.eliminar_encargado(self.conn, self.seleccionado)
+            self.cargar_tabla(); self.limpiar_formulario()

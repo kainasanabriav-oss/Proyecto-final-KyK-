@@ -4,16 +4,16 @@ from datetime import datetime
 from Encargado import Encargado
 from MenorEdad import MenorEdad
 from .Estilos import preparar_ventana, configurar_estilos, barra_superior, pasos, COLOR_FONDO, COLOR_BLANCO, COLOR_AZUL, COLOR_MENTA, COLOR_BORDE, COLOR_GRIS, COLOR_AZUL_CLARO
-
+import odbc_conexion as conexion 
 
 class InterfazNinos:
-    def __init__(self, master, guardar_cambios):
-        self.guardar_cambios = guardar_cambios
+    def __init__(self, master, conn):
+        self.conn = conn
         self.ventana = tk.Toplevel(master)
         configurar_estilos()
         preparar_ventana(self.ventana, "Niños", 1020, 640)
         self.seleccionado = None
-        self.encargado_seleccionado = None
+        self.menores_cache = {}
         self.crear_interfaz()
         self.cargar_padres()
         self.cargar_tabla()
@@ -125,7 +125,10 @@ class InterfazNinos:
         self.tabla.bind("<<TreeviewSelect>>", self.seleccionar)
 
     def cargar_padres(self):
-        self.padre_map = {f"{e.Identificacion} - {e.Nombre_Completo}": e for e in Encargado.encargados}
+        self.padre_map = {
+            f"{ident} - {nombre}": id_enc
+            for id_enc, nombre, ident, *_ in conexion.listar_encargados(self.conn)
+        }
         self.cbo_padre["values"] = list(self.padre_map.keys())
 
     def buscar_todos(self):
@@ -136,33 +139,36 @@ class InterfazNinos:
         self.cargar_padres()
         for x in self.tabla.get_children():
             self.tabla.delete(x)
-        q = self.txt_buscar.get().strip().lower()
-        for enc, m in Encargado.todos_los_menores():
-            if q and q not in m.nombre_completo.lower() and q not in str(m.ID_menorEdad).lower() and q not in enc.Identificacion.lower():
-                continue
-            self.tabla.insert("", "end", values=(m.ID_menorEdad, m.nombre_completo, enc.Nombre_Completo, m.Fecha_Nacimiento, m.calculo_Edad_Menor(), m.Sexo))
+        self.menores_cache = {}
+        criterio = self.txt_buscar.get().strip()
+        for fila in conexion.listar_menores(self.conn, criterio):
+            id_m, nombre, ap1, ap2, sexo, fecha_nac, id_enc, nombre_enc, ident_enc = fila
+            self.menores_cache[id_m] = fila
+            edad = MenorEdad(nombre, ap1, ap2, sexo, fecha_nac, id_enc, id_m).calculo_Edad_Menor()
+            nombre_completo = f"{nombre} {ap1} {ap2}".strip()
+            self.tabla.insert("", "end", iid=str(id_m), values=(id_m, nombre_completo, nombre_enc, fecha_nac, edad, sexo))
 
     def seleccionar(self, _=None):
         sel = self.tabla.selection()
         if not sel:
             return
-        ident = str(self.tabla.item(sel[0], "values")[0])
-        for enc, m in Encargado.todos_los_menores():
-            if str(m.ID_menorEdad) == ident:
-                self.seleccionado = m
-                self.encargado_seleccionado = enc
-                clave = next((k for k, v in self.padre_map.items() if v is enc), "")
-                self.cbo_padre.set(clave)
-                vals = [m.ID_menorEdad, m.Nombre, m.Primer_Apellido, m.Segundo_Apellido, str(m.Fecha_Nacimiento)]
-                for e, v in zip(self.entradas.values(), vals):
-                    e.delete(0, "end")
-                    e.insert(0, v)
-                self.cbo_sexo.set(m.Sexo)
-                self.lbl_edad.config(text=f"{m.calculo_Edad_Menor()} años")
-                return
+        id_m = int(sel[0])
+        fila = self.menores_cache.get(id_m)
+        if not fila:
+            return
+        _, nombre, ap1, ap2, sexo, fecha_nac, id_enc, nombre_enc, ident_enc = fila
+        self.seleccionado = id_m
+        clave_padre = next((k for k, v in self.padre_map.items() if v == id_enc), "")
+        self.cbo_padre.set(clave_padre)
+        vals = [nombre, ap1, ap2, str(fecha_nac)]
+        for e, v in zip(self.entradas.values(), vals):
+            e.delete(0, "end")
+            e.insert(0, v)
+        self.cbo_sexo.set(sexo)
+        self.lbl_edad.config(text=f"{MenorEdad(nombre, ap1, ap2, sexo, fecha_nac).calculo_Edad_Menor()} años")
 
     def limpiar(self):
-        self.seleccionado = self.encargado_seleccionado = None
+        self.seleccionado = None
         self.cbo_padre.set("")
         self.cbo_sexo.set("")
         for e in self.entradas.values():
@@ -173,23 +179,20 @@ class InterfazNinos:
         if self.cbo_padre.get() not in self.padre_map:
             raise ValueError("Seleccione un padre o encargado.")
         vals = [e.get().strip() for e in self.entradas.values()]
-        fecha = datetime.strptime(vals[4], "%Y-%m-%d").date()
+        fecha = datetime.strptime(vals[3], "%Y-%m-%d").date()
         if not self.cbo_sexo.get():
             raise ValueError("Seleccione el sexo.")
-        return self.padre_map[self.cbo_padre.get()], vals[0], vals[1], vals[2], vals[3], self.cbo_sexo.get(), fecha
-
-    def _id_existe(self, ident, excepto=None):
-        return any(str(m.ID_menorEdad) == ident and m is not excepto for _, m in Encargado.todos_los_menores())
+        return {
+            "id_encargado": self.padre_map[self.cbo_padre.get()],
+            "nombre": vals[0], "primer_apellido": vals[1], "segundo_apellido": vals[2],
+            "sexo": self.cbo_sexo.get(), "fecha_nacimiento": fecha,
+        }
 
     def guardar(self):
         try:
-            enc, ident, nombre, a1, a2, sexo, fecha = self._datos()
-            if self._id_existe(ident):
-                raise ValueError("Ya existe un niño con esa identificación.")
-            enc.menoresEdad.append(MenorEdad(ident, nombre, a1, a2, sexo, fecha))
-            self.guardar_cambios()
-            self.cargar_tabla()
-            self.limpiar()
+            data = self._datos()
+            conexion.crear_menor(self.conn, data)
+            self.cargar_tabla(); self.limpiar()
             messagebox.showinfo("Guardado", "Niño registrado correctamente.")
         except Exception as e:
             messagebox.showerror("No se pudo guardar", str(e))
@@ -199,22 +202,10 @@ class InterfazNinos:
             messagebox.showwarning("Seleccione", "Seleccione un niño de la tabla.")
             return
         try:
-            enc, ident, nombre, a1, a2, sexo, fecha = self._datos()
-            if self._id_existe(ident, self.seleccionado):
-                raise ValueError("Ya existe otro niño con esa identificación.")
-            if enc is not self.encargado_seleccionado:
-                self.encargado_seleccionado.menoresEdad.remove(self.seleccionado)
-                enc.menoresEdad.append(self.seleccionado)
-                self.encargado_seleccionado = enc
-            self.seleccionado.ID_menorEdad = ident
-            self.seleccionado.Nombre = nombre
-            self.seleccionado.Primer_Apellido = a1
-            self.seleccionado.Segundo_Apellido = a2
-            self.seleccionado.Sexo = sexo
-            self.seleccionado.Fecha_Nacimiento = fecha
-            self.guardar_cambios()
+            data = self._datos()
+            conexion.actualizar_menor(self.conn, self.seleccionado, data)
             self.cargar_tabla()
-            self.lbl_edad.config(text=f"{self.seleccionado.calculo_Edad_Menor()} años")
+            self.lbl_edad.config(text=f"{MenorEdad(**{**data, 'ID_encargado': data['id_encargado']}).calculo_Edad_Menor()} años" if False else self.lbl_edad.cget("text"))
             messagebox.showinfo("Modificado", "Datos del niño actualizados.")
         except Exception as e:
             messagebox.showerror("No se pudo modificar", str(e))
@@ -223,8 +214,10 @@ class InterfazNinos:
         if not self.seleccionado:
             messagebox.showwarning("Seleccione", "Seleccione un niño de la tabla.")
             return
+        citas = conexion.contar_citas_de_menor(self.conn, self.seleccionado)
+        if citas > 0:
+            messagebox.showwarning("No permitido", f"Este niño tiene {citas} cita(s) registrada(s) y no puede eliminarse.")
+            return
         if messagebox.askyesno("Confirmar", "¿Desea eliminar el niño seleccionado?"):
-            self.encargado_seleccionado.menoresEdad.remove(self.seleccionado)
-            self.guardar_cambios()
-            self.cargar_tabla()
-            self.limpiar()
+            conexion.eliminar_menor(self.conn, self.seleccionado)
+            self.cargar_tabla(); self.limpiar()
